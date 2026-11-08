@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/favicon-dark-ink-32.png" media="(prefers-color-scheme: light)">
+<link rel="icon" type="image/png" href="/favicon-light-ink-32.png" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+<title>About · Tony Shi Photography</title>
+</head>
+<body>
+<header class="site">
+  <a class="logo" href="/" aria-label="Tony Shi Photography — home">
+    <span class="mark" aria-hidden="true">TS</span>
+    <img class="wordmark" src="/assets/logo-wordmark.png" alt="Tony Shi Photography">
+  </a>
+  <nav><a href="/photos">Portfolio</a><a href="/catalog">Catalog</a><a href="/aerial">Reel</a><a href="/featured">Press</a><a href="/inquiry">Inquiry</a><button class="theme-toggle" type="button" aria-label="Switch light/dark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></nav>
+</header>
+<main class="narrow about">
+  <div class="portrait" role="img" aria-label="Portrait placeholder"><span>Portrait</span></div>
+  <div>
+    <h1>About</h1>
+    <p>Bio coming soon.</p>
+  </div>
+</main>
+<footer class="site"><span>© <span id="yr"></span> Tony Shi. All rights reserved.</span><nav class="social" aria-label="Elsewhere"><a href="https://www.flickr.com/photos/tonyshi/" target="_blank" rel="noopener" title="Flickr — Tony Shi"><img src="https://cdn.jsdelivr.net/npm/simple-icons@13/icons/flickr.svg" alt="Flickr"></a><a href="https://www.flickr.com/photos/tonyshilife/" target="_blank" rel="noopener" title="Flickr — Tony Shi Life"><img src="https://cdn.jsdelivr.net/npm/simple-icons@13/icons/flickr.svg" alt="Flickr (life)">life</a><a href="https://www.youtube.com/tonyshiphoto" target="_blank" rel="noopener" title="YouTube"><img src="https://cdn.jsdelivr.net/npm/simple-icons@13/icons/youtube.svg" alt="YouTube"></a><a href="https://www.instagram.com/tonyshiphoto/" target="_blank" rel="noopener" title="Instagram @tonyshiphoto"><img src="https://cdn.jsdelivr.net/npm/simple-icons@13/icons/instagram.svg" alt="Instagram"></a><a href="/api/go/getty" target="_blank" rel="noopener" title="Getty Images — license my photos"><img src="/assets/getty.png" alt="Getty Images"></a></nav></footer>
+<script>document.getElementById("yr").textContent=new Date().getFullYear()</script>
+<script src="/assets/theme.js"></script>
+</body>
+</html>

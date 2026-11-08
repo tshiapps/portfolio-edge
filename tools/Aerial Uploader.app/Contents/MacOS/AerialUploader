@@ -1,0 +1,24 @@
+#!/bin/zsh
+# Aerial Uploader launcher. Everything it runs is inside this .app (Contents/Resources), so the app can be
+# copied to any Mac on its own. It needs Node.js and ffmpeg from Homebrew; if either is missing it says how to get them.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+RES="${0:A:h}/../Resources"
+LOG="$HOME/Library/Logs/AerialUploader.log"
+
+missing=()
+command -v node >/dev/null || missing+=(node)
+command -v ffmpeg >/dev/null || missing+=(ffmpeg)
+if (( ${#missing} )); then
+  if command -v brew >/dev/null; then
+    cmd="brew install ${missing[*]}"
+    msg="Aerial Uploader needs ${missing[*]} on this Mac.\n\nOpen Terminal and run:\n\n$cmd\n\nthen open Aerial Uploader again."
+  else
+    cmd='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && brew install node ffmpeg'
+    msg="Aerial Uploader needs Homebrew, Node.js and ffmpeg on this Mac.\n\nInstall Homebrew from brew.sh, then run:\n\nbrew install node ffmpeg\n\nthen open Aerial Uploader again."
+  fi
+  btn=$(osascript -e "button returned of (display dialog \"$msg\" with title \"Aerial Uploader\" buttons {\"Copy command\", \"OK\"} default button \"Copy command\" with icon caution)" 2>/dev/null)
+  [[ "$btn" == "Copy command" ]] && print -rn -- "$cmd" | pbcopy
+  exit 1
+fi
+
+exec node "$RES/aerial-gui.mjs" >>"$LOG" 2>&1

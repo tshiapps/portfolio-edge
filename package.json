@@ -1,0 +1,15 @@
+{
+  "name": "tonyshi-photos",
+  "private": true,
+  "scripts": {
+    "setup": "zsh ./deploy.sh",
+    "deploy": "zsh ./scripts/build-app.sh && zsh ./cf d1 migrations apply tonyshi-photos --remote && zsh ./cf deploy",
+    "test": "node --experimental-sqlite --no-warnings test/sim.mjs && node --experimental-sqlite --no-warnings test/media.mjs && node --experimental-sqlite --no-warnings test/gui.mjs && node --experimental-sqlite --no-warnings test/home.mjs && node --experimental-sqlite --no-warnings test/inquiry.mjs && node --experimental-sqlite --no-warnings test/fetch.mjs && node --experimental-sqlite --no-warnings test/getty.mjs && node --experimental-sqlite --no-warnings test/tags.mjs && node --experimental-sqlite --no-warnings test/folders.mjs && node --experimental-sqlite --no-warnings test/features.mjs && node --experimental-sqlite --no-warnings test/instagram.mjs && node --experimental-sqlite --no-warnings test/igmatch.mjs && node --experimental-sqlite --no-warnings test/igpublish.mjs && node --experimental-sqlite --no-warnings test/gettymatch.mjs && node --experimental-sqlite --no-warnings test/photoinfo.mjs && node --experimental-sqlite --no-warnings test/headers.mjs && node --experimental-sqlite --no-warnings test/catalog.mjs && node --experimental-sqlite --no-warnings test/stats.mjs && node --experimental-sqlite --no-warnings test/igstats.mjs",
+    "app": "node 'tools/Aerial Uploader.app/Contents/Resources/aerial-gui.mjs'",
+    "build:app": "zsh ./scripts/build-app.sh",
+    "fetch": "node tools/flickr-fetch.mjs"
+  },
+  "bin": {
+    "aerial": "tools/aerial.mjs"
+  }
+}

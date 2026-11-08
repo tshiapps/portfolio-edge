@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TSP Uploader</title>
+<style>
+:root { --bg:#f5f5f2; --panel:#fff; --ink:#1d1d1b; --muted:#6f6f68; --line:#e2e2dc; --accent:#5b3f8c; --ok:#2f7d4f; --bad:#b83a3a; --warn:#b7791f; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#151514; --panel:#1e1e1c; --ink:#ececE8; --muted:#9a9a93; --line:#33332f; --accent:#a68ad8; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.muted { color: var(--muted); } .small { font-size: 12px; }
+.spacer { flex: 1; }
+main { padding: 18px 20px 24px; max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+button, .btn { font: inherit; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; text-decoration: none; display: inline-block; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+button.big { padding: 11px 22px; font-size: 15px; }
+button:disabled { opacity: .45; cursor: default; }
+input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); min-width: 0; }
+.pill { font-size: 12px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line); }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.drop { border: 2px dashed var(--line); border-radius: 10px; padding: 22px; text-align: center; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 500; }
+td input.t { width: 100%; min-width: 140px; } td input.tm { width: 64px; }
+.name { font-weight: 500; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog { display: flex; gap: 3px; width: 150px; }
+.prog i { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; position: relative; }
+.prog i b { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.st { font-size: 12px; margin-top: 4px; }
+.st.done { color: var(--ok); } .st.error { color: var(--bad); }
+.x { border: 0; background: none; font-size: 18px; color: var(--muted); padding: 2px 6px; }
+#log { font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; background: #111110; color: #d9d9d3; border-radius: 10px; padding: 12px 14px; height: 260px; overflow: auto; white-space: pre-wrap; }
+#log .error { color: #ff8b8b; } #log .ok { color: #8fdca8; } #log time { color: #77776f; margin-right: 8px; }
+.warn { color: var(--warn); }
+/* trim editor */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 10; display: grid; place-items: center; padding: 16px; }
+.modal[hidden] { display: none; }
+.sheet { background: var(--panel); border-radius: 12px; width: min(980px, 100%); max-height: 100%; overflow: auto; padding: 16px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.stage { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; display: grid; place-items: center; }
+.stage video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.stage .band { position: absolute; left: 0; right: 0; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); outline: 1px dashed rgba(255,255,255,.6); pointer-events: none; }
+.stage .msg { position: absolute; color: #ddd; font-size: 13px; background: rgba(0,0,0,.6); padding: 6px 10px; border-radius: 6px; }
+.tl { position: relative; height: 64px; margin: 14px 8px 6px; border-radius: 6px; background: #222; touch-action: none; cursor: pointer; user-select: none; }
+.tl .strip { position: absolute; inset: 0; display: flex; overflow: hidden; border-radius: 6px; }
+.tl .strip img { flex: 1; min-width: 0; height: 100%; object-fit: cover; opacity: .9; }
+.tl .shade { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.62); }
+.tl .sel { position: absolute; top: -2px; bottom: -2px; border: 3px solid #f5c542; border-radius: 6px; pointer-events: none; }
+.tl .h { position: absolute; top: -6px; bottom: -6px; width: 16px; margin-left: -8px; background: #f5c542; border-radius: 4px; cursor: ew-resize; z-index: 2; }
+.tl .h::after { content: ""; position: absolute; left: 6px; top: 30%; bottom: 30%; width: 4px; border-left: 1px solid #6b5300; border-right: 1px solid #6b5300; }
+.tl .ph { position: absolute; top: -8px; bottom: -8px; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 4px #000; pointer-events: none; z-index: 1; }
+.times input { width: 84px; }
+.kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); }
+.len { font-size: 12px; color: var(--muted); margin-top: 3px; }
+/* tabs */
+.tabs { display: flex; gap: 4px; padding: 10px 20px 0; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 53px; z-index: 2; }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 9px 16px; font-weight: 500; color: var(--muted); }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.bignum { font-size: 34px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.logbox { font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; background: #111110; color: #d9d9d3; border-radius: 10px; padding: 12px 14px; height: 300px; overflow: auto; white-space: pre-wrap; }
+.logbox .error { color: #ff8b8b; } .logbox .ok { color: #8fdca8; } .logbox .warn { color: #f5c542; } .logbox time { color: #77776f; margin-right: 8px; }
+[hidden] { display: none !important; }
+.step { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bg); }
+.step .bar { flex: 0 0 220px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.step .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.step .bar.indet i { width: 35% !important; animation: indet 1.1s ease-in-out infinite; }
+@keyframes indet { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+.plist { display: grid; gap: 6px; margin-top: 12px; max-height: 260px; overflow: auto; }
+.plist .it { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.plist .it img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; background: var(--line); flex: none; }
+.plist .it.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.plist .it .t { flex: 1; min-width: 0; }
+.plist .it .t div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* featured: crop + upload */
+.fq { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.fq button { font-size: 12px; padding: 4px 10px; border-radius: 99px; }
+.fq button.on { border-color: var(--accent); color: var(--accent); }
+.fq button.done { color: var(--ok); } .fq button.skip { opacity: .5; }
+.fstage { position: relative; display: block; width: fit-content; max-width: 100%; margin: 12px auto 0; user-select: none; touch-action: none; overflow: hidden; border-radius: 6px; }
+.fstage img { display: block; max-width: 100%; max-height: 62vh; }
+.fbox { position: absolute; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); outline: 1.5px solid #fff; cursor: move; }
+.fbox::before, .fbox::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent 33.2%, rgba(255,255,255,.35) 33.3%, transparent 33.6%, transparent 66.5%, rgba(255,255,255,.35) 66.6%, transparent 66.9%); }
+.fbox::after { background: linear-gradient(180deg, transparent 33.2%, rgba(255,255,255,.35) 33.3%, transparent 33.6%, transparent 66.5%, rgba(255,255,255,.35) 66.6%, transparent 66.9%); }
+.fbox i { position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 3px; }
+.fbox i[data-h=nw] { left: -8px; top: -8px; cursor: nwse-resize; } .fbox i[data-h=se] { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.fbox i[data-h=ne] { right: -8px; top: -8px; cursor: nesw-resize; } .fbox i[data-h=sw] { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.fprevw { display: grid; gap: 4px; justify-items: center; }
+.fprevw canvas { width: 240px; height: 180px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); background: #efefea; }
+.fsite { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
+.fsite figure { margin: 0; } .fsite img { width: 100%; aspect-ratio: 4/3; object-fit: cover; object-position: top; border-radius: 8px; background: var(--line); display: block; }
+.fsite figure.off { opacity: .4; } .fsite figcaption { font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TSP Uploader</h1>
+  <span id="srv" class="small muted"></span>
+  <span id="auth" class="pill"></span>
+  <span class="spacer"></span>
+  <a id="viewPage" class="btn" target="_blank" rel="noopener">View /aerial ↗</a>
+  <a id="admin" class="btn" target="_blank" rel="noopener">Manage clips ↗</a>
+  <button id="quit" title="Close the uploader">Quit</button>
+</header>
+<nav class="tabs"><button id="tabV" class="on">🎬 Video</button><button id="tabP">🖼 Photos</button><button id="tabF">⭐ Featured</button><button id="tabI">📷 Matching</button></nav>
+<main>
+  <div id="ffmpegWarn" class="card warn" hidden></div>
+
+  <div id="loginCard" class="card" hidden>
+    <strong>Log in once</strong>
+    <p class="small muted" style="margin:4px 0 10px">Create a token in the site admin → Settings → Upload tokens, paste it here. It's saved in your Mac's Keychain.</p>
+    <div class="row">
+      <input id="token" placeholder="tsp_…" style="width:430px" autocomplete="off" spellcheck="false">
+      <button id="loginBtn" class="primary">Log in</button>
+      <span id="loginMsg" class="small"></span>
+    </div>
+  </div>
+
+  <section id="secV">
+  <div class="card">
+    <div class="drop">
+      <button id="choose" class="primary big">Choose videos…</button>
+      <div class="small muted" style="margin-top:8px">Pick one or more .mov / .mp4 files. Each becomes a clip on the Aerial page, in its original shape (or a 2:1 crop if you choose).</div>
+    </div>
+    <table id="tbl" hidden>
+      <thead><tr><th>File</th><th>Title</th><th>Start</th><th>End</th><th></th><th>Shape</th><th>Progress</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="row" style="margin-top:14px">
+      <label class="small">Max length if no End: <input id="max" type="number" value="20" min="2" max="120" style="width:64px"> s</label>
+      <label class="small"><input id="best" type="checkbox"> Best quality (slower, ~10–15% smaller)</label>
+      <span class="spacer"></span>
+      <button id="clearDone" hidden>Clear finished</button>
+      <button id="upload" class="primary big" disabled>Compress &amp; Upload</button>
+    </div>
+  </div>
+
+  <div id="trim" class="modal" hidden>
+    <div class="sheet">
+      <div class="row"><strong id="trimTitle">Trim</strong><span class="spacer"></span>
+        <span class="small muted"><span class="kbd">space</span> play · <span class="kbd">I</span> set start · <span class="kbd">O</span> set end · <span class="kbd">←→</span> step</span>
+        <button class="x" id="trimClose" title="Close">×</button></div>
+      <div class="stage" style="margin-top:10px"><video id="tv" muted playsinline preload="auto"></video><div class="band" id="band"></div><div class="msg" id="tmsg" hidden></div></div>
+      <div class="tl" id="tl">
+        <div class="strip" id="strip"></div>
+        <div class="shade" id="shL"></div><div class="shade" id="shR"></div>
+        <div class="sel" id="sel"></div>
+        <div class="h" id="hs" title="Drag to set the start"></div><div class="h" id="he" title="Drag to set the end"></div>
+        <div class="ph" id="ph"></div>
+      </div>
+      <div class="row times" style="margin-top:10px">
+        <label class="small">Start <input id="tStart"></label>
+        <label class="small">End <input id="tEnd"></label>
+        <strong id="tLen"></strong><span class="small muted" id="tPos"></span>
+        <span class="spacer"></span>
+        <label class="small">Shape <select id="tCrop"><option value="none">Original shape</option><option value="center">2:1 · center</option><option value="top">2:1 · top</option><option value="bottom">2:1 · bottom</option></select></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="tPlay" class="primary">▶ Play selection</button>
+        <button id="tSetS">[ Start here</button><button id="tSetE">End here ]</button>
+        <span class="small muted">Quick:</span>
+        <button id="tFirst">First <span class="n">10</span> s</button>
+        <button id="tLast">Last <span class="n">10</span> s</button>
+        <label class="small"><input id="tN" type="number" value="10" min="1" max="600" style="width:58px"> s</label>
+        <button id="tAll">Whole clip</button>
+        <span class="spacer"></span>
+        <button id="tCancel">Cancel</button><button id="tApply" class="primary">Apply trim</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="row" style="margin-bottom:6px"><strong>Log</strong><span class="spacer"></span><span id="busy" class="small muted"></span></div>
+    <div id="log"></div>
+  </div>
+  </section>
+
+  <section id="secP" hidden>
+    <div class="card">
+      <div class="row">
+        <div><div class="bignum" id="pWaiting">–</div><div class="small muted">photos waiting for a full-size download</div>
+          <div class="small" id="pPrep" style="color:var(--warn)"></div></div>
+        <span class="spacer"></span>
+        <label class="small"><input type="checkbox" id="pWatch"> Keep running (checks every 5 min)</label>
+        <button id="pStart" class="primary big">Start</button>
+        <button id="pStop" class="big" hidden>Stop</button>
+      </div>
+      <div class="small" id="pStats" style="margin-top:10px"></div>
+      <div class="step" id="pStep" hidden><div class="bar" id="pBar"><i></i></div><span id="pStepText" class="small"></span></div>
+      <div id="pListWrap" hidden>
+        <div class="small muted" style="margin-top:14px">Waiting:</div>
+        <div class="plist" id="pList"></div>
+      </div>
+      <p class="small muted" style="margin:10px 0 0">Flickr won't hand full-size images to the website's servers, so this downloads them on your connection,
+        resizes them here on your Mac (same sizes and quality as the site — panoramas included, no file-size limit) and uploads the finished files.
+        To choose which photos: in the admin's <strong>Organizer</strong>, select them (e.g. filter <em>Panoramas</em>) → <strong>Send to Mac fetcher</strong>.</p>
+    </div>
+    <div>
+      <div class="row" style="margin-bottom:6px"><strong>Photos log</strong></div>
+      <div id="plog" class="logbox"></div>
+    </div>
+  </section>
+  <section id="secI" hidden>
+    <div class="card">
+      <div class="row">
+        <div><div class="bignum" id="iUnchecked">–</div><div class="small muted">Instagram images not matched yet</div>
+          <div class="small muted" id="iTotals"></div></div>
+        <div><div class="bignum" id="gUnchecked">–</div><div class="small muted">Getty photos not matched yet</div>
+          <div class="small muted" id="gTotals"></div></div>
+        <span class="spacer"></span>
+        <label class="small"><input type="checkbox" id="iAll"> Re-check everything</label>
+        <button id="iStart" class="primary big">Match Instagram</button><button id="gStart" class="primary big">Match Getty</button><button id="iStop" class="big" hidden>Stop</button>
+        <a id="iAdmin" class="btn" target="_blank" rel="noopener">Review Instagram ↗</a><a id="gAdmin" class="btn" target="_blank" rel="noopener">Review Getty ↗</a>
+      </div>
+      <div class="step" id="iStep" hidden><div class="bar" id="iBar"><i></i></div><span id="iStepText" class="small"></span></div>
+      <p class="small muted" style="margin:10px 0 0">Finds which Instagram post shows which photo on the site — even when Instagram's version is cropped to 4:5 or square,
+        filtered or re-edited. Everything runs on this Mac (best on the Mac Studio): an image model (DINOv2) shortlists look-alikes, then matching details are lined up to confirm.
+        Clear matches are linked automatically; near-duplicates go to <b>admin → Instagram</b> for you to pick. The first run installs the matcher (~1.5 GB, once) and reads every
+        site photo; after that it only looks at new posts.
+        <b>Getty</b> works the same way on your Getty portfolio (import DeepMeta's export in admin → Getty first): it fetches each asset's watermarked preview once
+        and ignores the watermark; assets already linked by file name or by you are skipped.</p>
+    </div>
+    <div>
+      <div class="row" style="margin-bottom:6px"><strong>Matching log</strong></div>
+      <div id="ilog" class="logbox"></div>
+    </div>
+  </section>
+
+  <section id="secF" hidden>
+    <div class="card">
+      <div class="row">
+        <button id="fFolder" class="primary big">Choose a folder…</button>
+        <button id="fChoose">Choose images…</button>
+        <span class="small muted">Then go through them one by one: crop → <span class="kbd">Return</span> uploads, <span class="kbd">→</span> skips. Title is optional (add it later in the admin).</span>
+        <span class="spacer"></span><a id="fAdmin" class="btn" target="_blank" rel="noopener">Manage on the site ↗</a>
+      </div>
+      <div class="row" id="fProg" hidden style="margin-top:12px"><strong id="fProgT"></strong><span class="spacer"></span>
+        <label class="small"><input type="checkbox" id="fHideDone" checked> Hide finished</label></div>
+      <div id="fQueue" class="fq"></div>
+    </div>
+    <div class="card" id="fEdit" hidden>
+      <div class="row"><button id="fPrev" title="Previous">‹</button><strong id="fName"></strong><button id="fNext" title="Next (skip)">›</button><span class="spacer"></span>
+        <label class="small">Crop <select id="fAspect"><option value="1.33333">4:3 — fills the tile</option><option value="0.75">3:4</option><option value="1">1:1</option><option value="0">Free (tight around a cover)</option></select></label>
+        <label class="small">In the tile <select id="fFit"><option value="auto">Auto</option><option value="cover">Fill — cut to 4:3</option><option value="blur">Whole · blurred backdrop</option><option value="plain">Whole · plain</option><option value="white">Whole · white</option></select></label>
+        <button id="fReset">Reset</button></div>
+      <div class="fstage" id="fStage"><img id="fImg" alt=""><div class="fbox" id="fBox"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div>
+      <div class="row" style="margin-top:12px;align-items:flex-start">
+        <div class="fprevw"><canvas id="fPrevC" width="480" height="360"></canvas><div class="small muted" id="fPrevT">On the site</div></div>
+        <div style="flex:1;display:grid;gap:8px;min-width:260px">
+        <input id="fTitle" placeholder="Title — e.g. Wall Street Journal" style="flex:2 1 220px">
+        <input id="fCap" placeholder="Caption (optional)" style="flex:1 1 160px">
+        <input id="fUrl" placeholder="Link to the article (optional)" style="flex:1 1 200px">
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px"><span id="fInfo" class="small muted"></span><span class="spacer"></span>
+        <button id="fSkip">Skip</button><button id="fGo" class="primary big">Crop &amp; Upload</button></div>
+    </div>
+    <div class="card"><div class="row"><strong>On the site</strong><span id="fCount" class="small muted"></span></div><div id="fSite" class="fsite"></div></div>
+  </section>
+</main>
+<script>
+const K = new URLSearchParams(location.search).get('k');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const api = async (p, opts = {}) => {
+  const res = await fetch(p, { ...opts, headers: { 'x-k': K, 'content-type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || res.status);
+  return d;
+};
+let S = { files: [], busy: false };
+const files = new Map();
+
+function logLine(l) {
+  const box = $('#log'), atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  const t = new Date(l.t).toLocaleTimeString();
+  box.insertAdjacentHTML('beforeend', `<div class="${l.level}"><time>${t}</time>${esc(l.text)}</div>`);
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+
+function fmtInfo(i) {
+  if (!i) return '';
+  const d = i.duration >= 60 ? `${Math.floor(i.duration / 60)}:${String(Math.round(i.duration % 60)).padStart(2, '0')}` : `${i.duration.toFixed(1)}s`;
+  return `${i.width}×${i.height} · ${Math.round(i.fps)}fps · ${d}${i.hdr ? ' · HDR' : ''} · ${(i.size / 1e6).toFixed(0)} MB`;
+}
+
+// mirrors resolveSegment() in aerial-core.mjs (negative = counted back from the end)
+function parseT(s) {
+  s = String(s ?? '').trim(); if (!s) return undefined;
+  const neg = s.startsWith('-'); if (neg) s = s.slice(1).trim();
+  const p = s.split(':').map(Number); if (!s || p.some(n => !Number.isFinite(n) || n < 0)) return NaN;
+  const t = p.reduce((a, n) => a * 60 + n, 0); return neg ? -t : t;
+}
+function seg(f) {
+  const dur = f.info?.duration || 0, max = +$('#max').value || 20;
+  const rel = t => (t !== undefined && t < 0 ? Math.max(0, dur + t) : t);
+  let st = rel(parseT(f.start)), en = rel(parseT(f.end));
+  if (Number.isNaN(st) || Number.isNaN(en)) return null;
+  if (st === undefined) st = en !== undefined ? Math.max(0, en - max) : 0;
+  if (en === undefined) en = Math.min(dur, st + max);
+  en = Math.min(en, dur);
+  return { start: st, end: en, length: en - st };
+}
+const fmt = t => { const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s.toFixed(1).padStart(4, '0')}`; };
+function segText(f) {
+  if (!f.info) return '';
+  const g = seg(f); if (!g) return 'bad time';
+  return g.length > 0 ? `${fmt(g.start)}–${fmt(g.end)} · ${g.length.toFixed(1)} s` : 'empty selection';
+}
+
+const CROPS = [['none', 'Original shape'], ['center', '2:1 · center'], ['top', '2:1 · top'], ['bottom', '2:1 · bottom']];
+function proxyText(f) {
+  if (f.preview !== 'proxy' || !f.proxy || f.proxy === 'ready') return '';
+  if (f.proxy === 'failed') return '<div class="len" style="color:var(--bad)">preview failed</div>';
+  return `<div class="len">preview copy ${f.proxy === 'queued' ? 'queued' : Math.round((f.proxyFrac || 0) * 100) + '%'}</div>`;
+}
+
+function rowHtml(f) {
+  const pr = f.progress || {};
+  const bar = k => `<i title="${k}"><b style="width:${Math.round((pr[k] || 0) * 100)}%"></b></i>`;
+  const st = { ready: 'Ready', working: 'Working…', done: '✓ Uploaded', error: '✗ ' + (f.error || 'Failed') }[f.status];
+  const lock = f.status === 'working' || S.busy ? 'disabled' : '';
+  return `<td><div class="name" title="${esc(f.path)}">${esc(f.name)}</div><div class="small muted">${esc(fmtInfo(f.info))}</div></td>
+    <td><input class="t" data-k="title" value="${esc(f.title)}" ${lock}></td>
+    <td><input class="tm" data-k="start" value="${esc(f.start)}" placeholder="0:00" ${lock}></td>
+    <td><input class="tm" data-k="end" value="${esc(f.end)}" placeholder="auto" ${lock}></td>
+    <td><button data-trim ${lock || (f.info ? '' : 'disabled')}>✂ Trim</button><div class="len">${esc(segText(f))}</div>${proxyText(f)}</td>
+    <td><select data-k="crop" ${lock}>${CROPS.map(([v, l]) => `<option value="${v}" ${f.crop === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+    <td><div class="prog">${bar('desktop')}${bar('mobile')}${bar('upload')}</div><div class="st ${f.status}">${esc(st)}</div></td>
+    <td><button class="x" data-del title="Remove" ${f.status === 'working' ? 'disabled' : ''}>×</button></td>`;
+}
+
+function renderFile(f) {
+  files.set(f.id, f);
+  if (T.f && T.f.id === f.id) { T.f = f; trimSource(); }
+  let tr = document.querySelector(`tr[data-id="${f.id}"]`);
+  if (!tr) { tr = document.createElement('tr'); tr.dataset.id = f.id; $('#rows').append(tr); }
+  const typing = tr.contains(document.activeElement) && document.activeElement.matches('input');
+  if (typing && f.status !== 'working') {
+    // don't clobber what you're typing — refresh only progress + status
+    const tmp = document.createElement('tr'); tmp.innerHTML = rowHtml(f);
+    tr.querySelector('.prog').replaceWith(tmp.querySelector('.prog'));
+    tr.querySelector('.st').replaceWith(tmp.querySelector('.st'));
+  } else tr.innerHTML = rowHtml(f);
+  refresh();
+}
+
+function refresh() {
+  const list = [...files.values()];
+  $('#tbl').hidden = !list.length;
+  const todo = list.filter(f => f.status === 'ready' || (f.status === 'error' && f.info)).length;
+  $('#upload').disabled = S.busy || !todo || !S.loggedIn || !!S.ffmpeg;
+  $('#upload').textContent = S.busy ? 'Working…' : `Compress & Upload${todo ? ` (${todo})` : ''}`;
+  $('#choose').disabled = false;
+  $('#clearDone').hidden = !list.some(f => f.status === 'done') || S.busy;
+  $('#busy').textContent = S.busy ? 'working — keep this window open' : '';
+}
+
+function applyState(s) {
+  S = s;
+  $('#srv').textContent = s.account;
+  $('#auth').textContent = s.loggedIn ? 'Logged in' : 'Not logged in';
+  $('#auth').className = 'pill ' + (s.loggedIn ? 'ok' : 'bad');
+  $('#loginCard').hidden = s.loggedIn;
+  $('#ffmpegWarn').hidden = !s.ffmpeg; $('#ffmpegWarn').textContent = s.ffmpeg ? '⚠ ' + s.ffmpeg : '';
+  $('#viewPage').href = s.server + '/aerial';
+  $('#admin').href = s.server + '/admin/#media';
+  $('#rows').innerHTML = ''; files.clear();
+  s.files.forEach(renderFile);
+  refresh();
+  drawPhotos();
+}
+
+$('#rows').addEventListener('input', e => {
+  const el = e.target.closest('[data-k]'); if (!el) return;
+  const id = el.closest('tr').dataset.id;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => api('/api/files/' + id, { method: 'PATCH', body: { [el.dataset.k]: el.value } }).catch(err => logLine({ t: Date.now(), text: err.message, level: 'error' })), 300);
+});
+$('#max').addEventListener('input', () => document.querySelectorAll('#rows tr').forEach(tr => {
+  const f = files.get(tr.dataset.id); const el = tr.querySelector('.len'); if (f && el) el.textContent = segText(f);
+}));
+$('#rows').addEventListener('input', e => {
+  const tr = e.target.closest('tr'); const f = tr && files.get(tr.dataset.id); if (!f) return;
+  if (e.target.dataset.k) { f[e.target.dataset.k] = e.target.value; tr.querySelector('.len').textContent = segText(f); }
+});
+$('#rows').addEventListener('click', e => {
+  if (e.target.closest('[data-trim]')) return openTrim(files.get(e.target.closest('tr').dataset.id));
+  if (!e.target.closest('[data-del]')) return;
+  api('/api/files/' + e.target.closest('tr').dataset.id, { method: 'DELETE' });
+});
+$('#choose').onclick = async () => {
+  $('#choose').disabled = true;
+  try { const r = await api('/api/choose', { method: 'POST' }); if (!r.added) logLine({ t: Date.now(), text: 'No files chosen.', level: 'info' }); }
+  catch (err) { logLine({ t: Date.now(), text: err.message, level: 'error' }); }
+  $('#choose').disabled = false;
+};
+$('#upload').onclick = async () => {
+  try { await api('/api/upload', { method: 'POST', body: { best: $('#best').checked, max: +$('#max').value } }); }
+  catch (err) { logLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+$('#clearDone').onclick = () => api('/api/clear-done', { method: 'POST' });
+$('#loginBtn').onclick = async () => {
+  $('#loginMsg').textContent = 'Checking…';
+  try { applyState(await api('/api/login', { method: 'POST', body: { token: $('#token').value } })); $('#token').value = ''; $('#loginMsg').textContent = ''; }
+  catch (err) { $('#loginMsg').textContent = err.message; $('#loginMsg').style.color = 'var(--bad)'; }
+};
+$('#quit').onclick = async () => {
+  if ((S.busy || PS.running) && !confirm('Something is still running (upload or photo fetcher). Quit anyway?')) return;
+  await api('/api/quit', { method: 'POST' }).catch(() => {});
+  document.body.innerHTML = '<main><div class="card">TSP Uploader has quit. You can close this window.</div></main>';
+  window.close();
+};
+
+// ---------------- trim editor ----------------
+const T = { f: null, start: 0, end: 0, dur: 0, loop: false, usedProxy: false };
+const tv = $('#tv'), tl = $('#tl');
+const clampT = t => Math.max(0, Math.min(T.dur, t));
+const x = t => (T.dur ? (t / T.dur) * 100 : 0) + '%';
+
+function drawTrim() {
+  $('#hs').style.left = x(T.start); $('#he').style.left = x(T.end);
+  $('#sel').style.left = x(T.start); $('#sel').style.width = `calc(${x(T.end - T.start)})`;
+  $('#shL').style.left = '0'; $('#shL').style.width = x(T.start);
+  $('#shR').style.left = x(T.end); $('#shR').style.right = '0';
+  if (document.activeElement !== $('#tStart')) $('#tStart').value = fmt(T.start);
+  if (document.activeElement !== $('#tEnd')) $('#tEnd').value = fmt(T.end);
+  $('#tLen').textContent = `${(T.end - T.start).toFixed(1)} s`;
+  $('#tLen').style.color = T.end - T.start > 0.4 ? '' : 'var(--bad)';
+}
+function drawPlayhead() { $('#ph').style.left = x(tv.currentTime || 0); $('#tPos').textContent = `at ${fmt(tv.currentTime || 0)} of ${fmt(T.dur)}`; }
+function drawBand() {
+  const i = T.f?.info; if (!i) return;
+  if ($('#tCrop').value === 'none') { $('#band').hidden = true; return; }
+  $('#band').hidden = false;
+  const stage = $('.stage'), sw = stage.clientWidth, sh = stage.clientHeight;
+  const scale = Math.min(sw / i.width, sh / i.height), vw = i.width * scale, vh = i.height * scale;
+  const bh = Math.min(vh, vw / 2), top = (sh - vh) / 2;
+  const off = { top: 0, center: (vh - bh) / 2, bottom: vh - bh }[$('#tCrop').value];
+  const band = $('#band');
+  band.style.top = top + off + 'px'; band.style.height = bh + 'px';
+  band.style.left = (sw - vw) / 2 + 'px'; band.style.right = (sw - vw) / 2 + 'px';
+}
+
+function openTrim(f) {
+  const g = seg(f) || { start: 0, end: Math.min(f.info.duration, 20) };
+  Object.assign(T, { f, dur: f.info.duration, start: g.start, end: g.end, loop: false, kind: null });
+  $('#trimTitle').textContent = `Trim — ${f.name}`;
+  $('#tCrop').value = f.crop || 'none';
+  $('#strip').innerHTML = Array.from({ length: 12 }, (_, n) => `<img src="/api/files/${f.id}/thumb/${n}?k=${K}" alt="">`).join('');
+  $('#trim').hidden = false;
+  trimSource();
+  drawTrim(); drawPlayhead();
+}
+
+// Original file if the browser can play it, otherwise the preview copy (waiting for it with progress if needed).
+function trimSource() {
+  const f = T.f, msg = $('#tmsg');
+  if (f.preview === 'proxy') {
+    if (f.proxy === 'ready') {
+      msg.hidden = true;
+      if (T.kind !== 'proxy') { T.kind = 'proxy'; tv.src = `/api/files/${f.id}/proxy?k=${K}`; }
+    } else {
+      if (T.kind) { tv.removeAttribute('src'); tv.load(); T.kind = null; }
+      msg.hidden = false;
+      msg.textContent = f.proxy === 'failed' ? 'Couldn’t make a preview of this file — you can still trim with the filmstrip and times.'
+        : `This file (${(f.info.codec || '').toUpperCase()}) can’t play in a browser — making a light preview copy… ${f.proxy === 'making' ? Math.round((f.proxyFrac || 0) * 100) + '%' : 'queued'}`;
+    }
+    return;
+  }
+  if (T.kind !== 'source') {
+    T.kind = 'source'; msg.hidden = true;
+    tv.src = `/api/files/${f.id}/source?k=${K}`;
+    clearTimeout(T.fallback);
+    T.fallback = setTimeout(() => { if (T.kind === 'source' && (tv.readyState < 2 || !tv.videoWidth)) needProxy(); }, 5000);
+  }
+}
+function needProxy() {
+  if (!T.f || T.f.preview === 'proxy') return;
+  T.f.preview = 'proxy'; T.kind = null;
+  api(`/api/files/${T.f.id}/need-proxy`, { method: 'POST' }).catch(() => {});
+  trimSource();
+}
+tv.addEventListener('error', () => { if (T.kind === 'source') needProxy(); });
+tv.addEventListener('loadedmetadata', () => { tv.currentTime = T.start; drawBand(); });
+// the container opened but the video track didn't decode (e.g. ProRes in Chrome): nothing to show → preview copy
+tv.addEventListener('loadeddata', () => { if (T.kind === 'source' && !tv.videoWidth) needProxy(); else clearTimeout(T.fallback); });
+tv.addEventListener('timeupdate', () => {
+  if (T.loop && tv.currentTime >= T.end - 0.03) tv.currentTime = T.start;
+  drawPlayhead();
+});
+tv.addEventListener('play', () => { $('#tPlay').textContent = '⏸ Pause'; (function tick() { if (!tv.paused) { drawPlayhead(); requestAnimationFrame(tick); } })(); });
+tv.addEventListener('pause', () => { $('#tPlay').textContent = '▶ Play selection'; });
+addEventListener('resize', () => { if (!$('#trim').hidden) drawBand(); });
+$('#tCrop').onchange = drawBand;
+
+function closeTrim() { tv.pause(); clearTimeout(T.fallback); tv.removeAttribute('src'); tv.load(); $('#trim').hidden = true; T.f = null; T.kind = null; }
+function setStart(t) { T.start = clampT(Math.min(t, T.end - 0.5)); drawTrim(); }
+function setEnd(t) { T.end = clampT(Math.max(t, T.start + 0.5)); drawTrim(); }
+function togglePlay() {
+  if (!tv.paused) return tv.pause();
+  if (tv.currentTime < T.start || tv.currentTime >= T.end - 0.05) tv.currentTime = T.start;
+  T.loop = true; tv.play().catch(() => {});
+}
+
+// dragging handles / scrubbing the timeline
+let drag = null;
+const tAt = ev => { const r = tl.getBoundingClientRect(); return clampT(((ev.clientX - r.left) / r.width) * T.dur); };
+tl.addEventListener('pointerdown', ev => {
+  drag = ev.target.id === 'hs' ? 'start' : ev.target.id === 'he' ? 'end' : 'seek';
+  tl.setPointerCapture(ev.pointerId); tv.pause(); move(ev);
+});
+tl.addEventListener('pointermove', ev => { if (drag) move(ev); });
+tl.addEventListener('pointerup', () => { drag = null; });
+function move(ev) {
+  const t = tAt(ev);
+  if (drag === 'start') { setStart(t); tv.currentTime = T.start; }
+  else if (drag === 'end') { setEnd(t); tv.currentTime = T.end; }
+  else tv.currentTime = t;
+  drawPlayhead();
+}
+
+$('#tStart').onchange = () => { const v = parseT($('#tStart').value); if (!Number.isNaN(v) && v !== undefined) setStart(v < 0 ? T.dur + v : v); else drawTrim(); tv.currentTime = T.start; };
+$('#tEnd').onchange = () => { const v = parseT($('#tEnd').value); if (!Number.isNaN(v) && v !== undefined) setEnd(v < 0 ? T.dur + v : v); else drawTrim(); tv.currentTime = T.end; };
+$('#tPlay').onclick = togglePlay;
+$('#tSetS').onclick = () => setStart(tv.currentTime);
+$('#tSetE').onclick = () => setEnd(tv.currentTime);
+$('#tN').oninput = () => document.querySelectorAll('#trim .n').forEach(el => { el.textContent = $('#tN').value || '?'; });
+$('#tFirst').onclick = () => { const n = +$('#tN').value || 10; T.start = 0; T.end = clampT(n); drawTrim(); tv.currentTime = 0; };
+$('#tLast').onclick = () => { const n = +$('#tN').value || 10; T.end = T.dur; T.start = clampT(T.dur - n); drawTrim(); tv.currentTime = T.start; };
+$('#tAll').onclick = () => { T.start = 0; T.end = T.dur; drawTrim(); };
+$('#trimClose').onclick = $('#tCancel').onclick = closeTrim;
+$('#tApply').onclick = async () => {
+  const f = T.f, body = { start: fmt(T.start), end: fmt(T.end), crop: $('#tCrop').value };
+  closeTrim();
+  try { await api('/api/files/' + f.id, { method: 'PATCH', body }); }
+  catch (err) { logLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+document.addEventListener('keydown', ev => {
+  if ($('#trim').hidden || ev.target.matches('input, select')) return;
+  if (ev.key === ' ') { ev.preventDefault(); togglePlay(); }
+  else if (ev.key === 'i' || ev.key === 'I') setStart(tv.currentTime);
+  else if (ev.key === 'o' || ev.key === 'O') setEnd(tv.currentTime);
+  else if (ev.key === 'ArrowLeft') { tv.pause(); tv.currentTime = clampT(tv.currentTime - (ev.shiftKey ? 1 : 1 / 30)); }
+  else if (ev.key === 'ArrowRight') { tv.pause(); tv.currentTime = clampT(tv.currentTime + (ev.shiftKey ? 1 : 1 / 30)); }
+  else if (ev.key === 'Escape') closeTrim();
+});
+
+// ---------------- tabs ----------------
+function showTab(t) {
+  $('#secV').hidden = t !== 'v'; $('#secP').hidden = t !== 'p'; $('#secF').hidden = t !== 'f'; $('#secI').hidden = t !== 'i';
+  $('#tabV').classList.toggle('on', t === 'v'); $('#tabP').classList.toggle('on', t === 'p'); $('#tabF').classList.toggle('on', t === 'f'); $('#tabI').classList.toggle('on', t === 'i');
+  try { localStorage.setItem('tab', t); } catch {}
+  if (t === 'p') loadPhotos();
+  if (t === 'f') loadFeatSite();
+  if (t === 'i') loadIg();
+}
+$('#tabI').onclick = () => showTab('i');
+
+// ---------------- instagram matcher ----------------
+let IS = { running: false };
+function ilogLine(l) {
+  const box = $('#ilog'), atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.insertAdjacentHTML('beforeend', `<div class="${l.level}"><time>${new Date(l.t).toLocaleTimeString()}</time>${esc(l.text)}</div>`);
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+function drawIg() {
+  $('#iStart').hidden = IS.running; $('#iStop').hidden = !IS.running;
+  $('#iStart').disabled = $('#gStart').disabled = !S.loggedIn; $('#iAll').disabled = IS.running;
+  $('#iStart').textContent = IS.ready === false ? 'Set up & match Instagram' : 'Match Instagram';
+  $('#gStart').textContent = IS.ready === false ? 'Set up & match Getty' : 'Match Getty';
+  $('#gStart').hidden = $('#iStart').hidden;
+  $('#iStep').hidden = !(IS.running && IS.step);
+  $('#iStepText').textContent = IS.step || '';
+  $('#iBar').classList.toggle('indet', IS.pct == null);
+  $('#iBar').querySelector('i').style.width = (IS.pct ?? 0) + '%';
+}
+async function loadIg() {
+  try {
+    const d = await api('/api/ig');
+    IS = d; $('#iAdmin').href = d.admin; $('#gAdmin').href = d.adminGetty;
+    if (d.remote && d.remote.gettyAssets != null) { $('#gUnchecked').textContent = Number(d.remote.gettyUnchecked).toLocaleString(); $('#gTotals').textContent = `${d.remote.gettyAssets.toLocaleString()} Getty photos in your portfolio`; }
+    if (d.remote?.error) ilogLine({ t: Date.now(), text: d.remote.error, level: 'error' });
+    else if (d.remote) { $('#iUnchecked').textContent = Number(d.remote.unchecked).toLocaleString(); $('#iTotals').textContent = `${d.remote.ig.toLocaleString()} Instagram images · ${d.remote.photos.toLocaleString()} site photos`; }
+    $('#ilog').innerHTML = ''; d.log.forEach(ilogLine);
+    drawIg();
+  } catch (err) { ilogLine({ t: Date.now(), text: err.message, level: 'error' }); }
+}
+$('#iStart').onclick = async () => {
+  try { await api('/api/ig/start', { method: 'POST', body: { all: $('#iAll').checked } }); }
+  catch (err) { ilogLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+$('#gStart').onclick = async () => {
+  try { await api('/api/ig/start', { method: 'POST', body: { all: $('#iAll').checked, source: 'getty' } }); }
+  catch (err) { ilogLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+$('#iStop').onclick = () => api('/api/ig/stop', { method: 'POST' }).catch(() => {});
+$('#tabV').onclick = () => showTab('v');
+$('#tabP').onclick = () => showTab('p');
+$('#tabF').onclick = () => showTab('f');
+
+// ---------------- featured: pick → crop → title → upload ----------------
+const FQ = []; let FC = null, FB = null; // queue, current item, crop box (in displayed px)
+const fImg = $('#fImg'), fBox = $('#fBox');
+const fAspect = () => +$('#fAspect').value || 0;
+function drawQueue() {
+  const hide = $('#fHideDone').checked, done = FQ.filter(q => q.state === 'done').length, skip = FQ.filter(q => q.state === 'skip').length;
+  $('#fProg').hidden = !FQ.length;
+  $('#fProgT').textContent = FQ.length ? `${FC ? FQ.indexOf(FC) + 1 : '–'} of ${FQ.length} · ${done} uploaded${skip ? ` · ${skip} skipped` : ''} · ${FQ.length - done - skip} to go` : '';
+  $('#fQueue').innerHTML = FQ.map((q, i) => hide && q.state === 'done' && q !== FC ? '' :
+    `<button data-q="${i}" class="${q === FC ? 'on' : ''} ${q.state || ''}">${q.state === 'done' ? '✓ ' : q.state === 'skip' ? '– ' : ''}${esc(q.name)}</button>`).join('');
+  $('#fQueue').querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+$('#fHideDone').onchange = drawQueue;
+const addFeat = items => {
+  for (const x of items) if (!FQ.some(q => q.name === x.name && q.id === x.id)) FQ.push({ ...x, state: x.uploaded ? 'done' : undefined });
+  if (!FC || FC.state) nextFeat(); else drawQueue();
+};
+$('#fFolder').onclick = async () => {
+  try { const d = await api('/api/feat/choose-folder', { method: 'POST' }); if (d.items.length) { FQ.length = 0; FC = null; addFeat(d.items); } }
+  catch (err) { logLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+function placeBox() { Object.assign(fBox.style, { left: FB.x + 'px', top: FB.y + 'px', width: FB.w + 'px', height: FB.h + 'px' }); updInfo(); prevSoon(); }
+// how it will sit in the site's 4:3 tile: Auto = fill when the crop is ~4:3, otherwise whole on a blurred backdrop
+const fitMode = () => { const v = $('#fFit').value; return v !== 'auto' ? v : FB && Math.abs(FB.w / FB.h - 4 / 3) < 0.08 ? 'cover' : 'blur'; };
+let prevRaf = 0;
+const prevSoon = () => { cancelAnimationFrame(prevRaf); prevRaf = requestAnimationFrame(drawPrev); };
+function drawPrev() {
+  if (!FB || !fImg.naturalWidth) return;
+  const c = $('#fPrevC'), g = c.getContext('2d'), W = c.width, H = c.height;
+  const k = fImg.naturalWidth / fImg.clientWidth, sx = FB.x * k, sy = FB.y * k, sw = FB.w * k, sh = FB.h * k;
+  const mode = fitMode();
+  g.save(); g.clearRect(0, 0, W, H);
+  if (mode === 'cover') {
+    const s = Math.max(W / sw, H / sh), dw = sw * s, dh = sh * s;
+    g.drawImage(fImg, sx, sy, sw, sh, (W - dw) / 2, 0, dw, dh); // pinned to the top, like the site
+  } else {
+    g.fillStyle = mode === 'white' ? '#fff' : '#efefea'; g.fillRect(0, 0, W, H);
+    if (mode === 'blur') {
+      const s = Math.max(W / sw, H / sh) * 1.15, dw = sw * s, dh = sh * s;
+      g.filter = 'blur(20px) saturate(1.15)'; g.globalAlpha = 0.6;
+      g.drawImage(fImg, sx, sy, sw, sh, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      g.filter = 'none'; g.globalAlpha = 1;
+    }
+    const s = Math.min((W - 36) / sw, (H - 28) / sh), dw = sw * s, dh = sh * s;
+    g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 18; g.shadowOffsetY = 8;
+    g.drawImage(fImg, sx, sy, sw, sh, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  }
+  g.restore();
+  $('#fPrevT').textContent = `On the site · ${{ cover: 'fills the tile', blur: 'whole, blurred backdrop', plain: 'whole, plain', white: 'whole, white' }[mode]}`;
+}
+$('#fFit').onchange = prevSoon;
+function updInfo() {
+  if (!FB || !fImg.naturalWidth) return;
+  const k = fImg.naturalWidth / fImg.clientWidth, w = Math.round(FB.w * k), h = Math.round(FB.h * k);
+  const s = Math.min(1, 2000 / Math.max(w, h));
+  $('#fInfo').textContent = `${fImg.naturalWidth}×${fImg.naturalHeight} → crop ${w}×${h}${s < 1 ? ` → uploads at ${Math.round(w * s)}×${Math.round(h * s)}` : ''}`;
+}
+function resetBox() {
+  const dw = fImg.clientWidth, dh = fImg.clientHeight, a = fAspect() || dw / dh;
+  const m = fAspect() ? 0.94 : 0.985; // Free starts around the whole image
+  let w = dw * m, h = w / a;
+  if (h > dh * m) { h = dh * m; w = h * a; }
+  FB = { x: (dw - w) / 2, y: (dh - h) / 2, w, h }; placeBox();
+}
+function openFeat(q) {
+  FC = q; drawQueue();
+  if (!q) { $('#fEdit').hidden = true; return; }
+  $('#fEdit').hidden = false; $('#fName').textContent = q.name;
+  $('#fTitle').value = q.title || ''; $('#fCap').value = q.caption || ''; $('#fUrl').value = q.url || '';
+  fImg.onload = () => {
+    // a tall image (book / magazine cover): crop freely around it and show it whole; a wide one: 4:3 to fill
+    const tall = fImg.naturalHeight > fImg.naturalWidth * 1.05;
+    $('#fAspect').value = tall ? '0' : '1.33333';
+    resetBox(); document.activeElement?.blur?.();
+  };
+  fImg.onerror = () => { $('#fInfo').textContent = 'Could not open this image.'; };
+  fImg.src = `/api/feat/file/${q.id}?k=${K}`;
+}
+const nextFeat = () => { const i = Math.max(0, FQ.indexOf(FC)); openFeat(FQ.slice(i).find(q => !q.state) || FQ.find(q => !q.state) || null); };
+$('#fChoose').onclick = async () => {
+  try { const d = await api('/api/feat/choose', { method: 'POST' }); addFeat(d.items); }
+  catch (err) { logLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+const stepFeat = dir => { const i = FQ.indexOf(FC); const q = FQ[i + dir]; if (q) openFeat(q); };
+$('#fPrev').onclick = () => stepFeat(-1);
+$('#fNext').onclick = () => { if (FC && !FC.state) FC.state = 'skip'; stepFeat(1); };
+// keyboard: Return = crop & upload, → = skip, ← = back (outside the caption / link boxes' own arrow keys)
+document.addEventListener('keydown', e => {
+  if ($('#secF').hidden || $('#fEdit').hidden || e.metaKey || e.altKey) return;
+  const typing = e.target.matches('input, select, textarea');
+  if (e.key === 'Enter' && (!typing || e.target.closest('#fEdit'))) { e.preventDefault(); $('#fGo').click(); }
+  else if (!typing && e.key === 'ArrowRight') { e.preventDefault(); $('#fNext').click(); }
+  else if (!typing && e.key === 'ArrowLeft') { e.preventDefault(); stepFeat(-1); }
+});
+$('#fQueue').onclick = e => { const b = e.target.closest('[data-q]'); if (b) openFeat(FQ[+b.dataset.q]); };
+$('#fAspect').onchange = resetBox; $('#fReset').onclick = resetBox;
+$('#fSkip').onclick = () => { if (FC) { FC.state = 'skip'; nextFeat(); } };
+let fDrag = null;
+fBox.addEventListener('pointerdown', e => {
+  e.preventDefault(); fBox.setPointerCapture(e.pointerId);
+  fDrag = { h: e.target.dataset.h || 'move', x0: e.clientX, y0: e.clientY, b: { ...FB } };
+});
+fBox.addEventListener('pointermove', e => {
+  if (!fDrag) return;
+  const dw = fImg.clientWidth, dh = fImg.clientHeight, b = fDrag.b, a = fAspect();
+  const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  if (fDrag.h === 'move') {
+    FB = { ...b, x: cl(b.x + e.clientX - fDrag.x0, 0, dw - b.w), y: cl(b.y + e.clientY - fDrag.y0, 0, dh - b.h) };
+  } else {
+    const r = fImg.getBoundingClientRect(), hd = fDrag.h;
+    const ax = hd.includes('w') ? b.x + b.w : b.x, ay = hd.includes('n') ? b.y + b.h : b.y; // the fixed corner
+    const px = cl(e.clientX - r.left, 0, dw), py = cl(e.clientY - r.top, 0, dh);
+    const maxW = hd.includes('w') ? ax : dw - ax, maxH = hd.includes('n') ? ay : dh - ay;
+    let w = Math.min(Math.abs(px - ax), maxW), h = Math.min(Math.abs(py - ay), maxH);
+    if (a) { h = w / a; if (h > maxH) { h = maxH; w = h * a; } }
+    w = Math.max(30, w); h = Math.max(30, h);
+    FB = { x: hd.includes('w') ? ax - w : ax, y: hd.includes('n') ? ay - h : ay, w, h };
+  }
+  placeBox();
+});
+fBox.addEventListener('pointerup', () => { fDrag = null; });
+window.addEventListener('resize', () => { if (FC && !$('#fEdit').hidden) resetBox(); });
+$('#fGo').onclick = async () => {
+  if (!FC || !FB) return;
+  const btn = $('#fGo'); btn.disabled = true; btn.textContent = 'Uploading…';
+  try {
+    const k = fImg.naturalWidth / fImg.clientWidth;
+    const sx = Math.round(FB.x * k), sy = Math.round(FB.y * k), sw = Math.round(FB.w * k), sh = Math.round(FB.h * k);
+    const s = Math.min(1, 2000 / Math.max(sw, sh));
+    const c = Object.assign(document.createElement('canvas'), { width: Math.round(sw * s), height: Math.round(sh * s) });
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+    g.drawImage(fImg, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.88));
+    // anything not close to the 4:3 tile is shown whole on the site instead of being cut to fill it
+    const fit = fitMode();
+    const meta = { fid: FC.id, title: $('#fTitle').value.trim(), caption: $('#fCap').value.trim(), url: $('#fUrl').value.trim(), w: c.width, h: c.height, fit, name: FC.name };
+    const res = await fetch('/api/feat/upload', { method: 'POST', headers: { 'x-k': K, 'content-type': 'image/jpeg', 'x-meta': encodeURIComponent(JSON.stringify(meta)) }, body: blob });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+    FC.state = 'done'; nextFeat(); loadFeatSite();
+  } catch (err) { logLine({ t: Date.now(), text: '★ Featured upload failed: ' + err.message, level: 'error' }); alert(err.message); }
+  finally { btn.disabled = false; btn.innerHTML = 'Crop &amp; Upload'; }
+};
+['fTitle', 'fCap', 'fUrl'].forEach(id => $('#' + id).addEventListener('input', e => { if (FC) FC[{ fTitle: 'title', fCap: 'caption', fUrl: 'url' }[id]] = e.target.value; }));
+$('#fTitle').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#fGo').click(); });
+async function loadFeatSite() {
+  if (!S.loggedIn) return;
+  try {
+    const d = await api('/api/feat/list');
+    $('#fAdmin').href = d.admin;
+    $('#fCount').textContent = ` · ${d.shown} shown · ${d.features.length} in total`;
+    $('#fSite').innerHTML = d.features.map(f => `<figure class="${f.enabled ? '' : 'off'}"><img loading="lazy" src="${esc(f.src)}" alt=""><figcaption>${esc(f.title || '(untitled)')}</figcaption></figure>`).join('')
+      || '<span class="small muted">Nothing yet.</span>';
+  } catch (err) { $('#fSite').innerHTML = `<span class="small" style="color:var(--bad)">${esc(err.message)}</span>`; }
+}
+
+// ---------------- photos (full-size fetcher) ----------------
+let PS = { running: false, stats: {} };
+function plogLine(l) {
+  const box = $('#plog'), atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.insertAdjacentHTML('beforeend', `<div class="${l.level}"><time>${new Date(l.t).toLocaleTimeString()}</time>${esc(l.text)}</div>`);
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+let RL = []; // waiting list from the site
+function drawList() {
+  const cur = PS.stats?.currentId;
+  $('#pListWrap').hidden = !RL.length;
+  $('#pList').innerHTML = RL.map(p => `<div class="it ${p.id === cur ? 'now' : ''}">
+      ${p.thumb ? `<img src="${esc(p.thumb)}" alt="">` : '<img alt="">'}
+      <div class="t"><div><strong>${esc(p.title || '(untitled)')}</strong></div>
+        <div class="small muted">${p.width ? `${p.width}×${p.height}` : ''} · ${esc(p.id)}${p.error ? ` · <span style="color:var(--bad)">last try: ${esc(p.error.slice(0, 80))}</span>` : ''}</div></div>
+      <span class="small ${p.id === cur ? '' : 'muted'}">${p.id === cur ? 'working…' : p.busy ? 'claimed' : 'waiting'}</span></div>`).join('');
+}
+async function refreshList() {
+  try { const d = await api('/api/photos'); RL = d.remote?.photos || [];
+    $('#pPrep').textContent = d.remote?.preparing ? `+ ${d.remote.preparing} being prepared by the site (arrive within a minute or two)` : ''; if (!PS.running && d.remote?.waiting != null) { PS.stats = { ...(PS.stats || {}), waiting: d.remote.waiting }; } drawList(); drawPhotos(); } catch {}
+}
+let lastDone = 0;
+function drawPhotos() {
+  const st = PS.stats || {};
+  $('#pStep').hidden = !(PS.running && st.step);
+  $('#pStepText').textContent = st.step || '';
+  $('#pBar').classList.toggle('indet', st.pct == null);
+  $('#pBar').querySelector('i').style.width = (st.pct ?? 0) + '%';
+  if ((st.done || 0) + (st.failed || 0) !== lastDone) { lastDone = (st.done || 0) + (st.failed || 0); refreshList(); }
+  drawList();
+  $('#pStart').hidden = PS.running; $('#pStop').hidden = !PS.running;
+  $('#pStart').disabled = !S.loggedIn || !!S.ffmpeg;
+  $('#pWatch').disabled = PS.running;
+  if (st.waiting != null) $('#pWaiting').textContent = Number(st.waiting).toLocaleString();
+  $('#pStats').innerHTML = PS.running || st.done || st.failed
+    ? `<span style="color:var(--ok)">✓ ${st.done || 0} stored</span>${st.failed ? ` · <span style="color:var(--bad)">✗ ${st.failed} failed</span>` : ''}${st.current ? ` · now: <strong>${esc(st.current)}</strong>` : ''}${PS.running ? ` · <span class="muted">${PS.watch ? 'running, keeps watching' : 'running'}</span>` : ''}`
+    : '';
+}
+async function loadPhotos() {
+  try {
+    const d = await api('/api/photos');
+    PS = { running: d.running, watch: d.watch, stats: d.stats };
+    RL = d.remote?.photos || [];
+    $('#pPrep').textContent = d.remote?.preparing ? `+ ${d.remote.preparing} being prepared by the site (arrive within a minute or two)` : '';
+    if (d.remote?.waiting != null && !d.running) PS.stats = { ...PS.stats, waiting: d.remote.waiting };
+    if (d.remote?.error) plogLine({ t: Date.now(), text: d.remote.error, level: 'error' });
+    $('#plog').innerHTML = ''; d.log.forEach(plogLine);
+    drawPhotos();
+  } catch (err) { plogLine({ t: Date.now(), text: err.message, level: 'error' }); }
+}
+$('#pStart').onclick = async () => {
+  try { await api('/api/photos/start', { method: 'POST', body: { watch: $('#pWatch').checked } }); }
+  catch (err) { plogLine({ t: Date.now(), text: err.message, level: 'error' }); }
+};
+$('#pStop').onclick = () => api('/api/photos/stop', { method: 'POST' }).catch(() => {});
+setInterval(() => { if (!$('#secP').hidden) refreshList(); }, 15000);
+
+api('/api/state').then(s => {
+  applyState(s); s.log.forEach(logLine);
+  let t = 'v'; try { t = localStorage.getItem('tab') || 'v'; } catch {}
+  showTab(t);
+});
+const es = new EventSource('/api/events?k=' + K);
+es.onmessage = e => {
+  const { type, data } = JSON.parse(e.data);
+  if (type === 'log') logLine(data);
+  else if (type === 'file') renderFile(data);
+  else if (type === 'removed') { files.delete(data); document.querySelector(`tr[data-id="${data}"]`)?.remove(); refresh(); }
+  else if (type === 'busy') { S.busy = data; [...files.values()].forEach(renderFile); refresh(); }
+  else if (type === 'plog') plogLine(data);
+  else if (type === 'pstate') { PS = data; drawPhotos(); }
+  else if (type === 'ilog') ilogLine(data);
+  else if (type === 'istate') { const was = IS.running; IS = { ...IS, ...data }; drawIg(); if (was && !data.running) loadIg(); }
+};
+</script>
+</body>
+</html>

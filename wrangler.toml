@@ -1,0 +1,58 @@
+name = "tonyshi-photos"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+# Deploys to the tonyshi.photos Cloudflare account via ./cf (CF_TONYSHIPHOTOS_API_TOKEN + _ACCOUNT_ID in ~/.zshrc).
+
+# Apex + www. Both must have no other DNS records (the old Adobe Portfolio A records are gone);
+# wrangler creates the DNS records and certificates on deploy.
+routes = [
+  { pattern = "tonyshi.photos", custom_domain = true },
+  { pattern = "www.tonyshi.photos", custom_domain = true }
+]
+
+# Every request hits the Worker first (admin auth + private-photo gate), which hands static
+# pages to the assets binding when appropriate.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tonyshi-photos"
+database_id = "<your-d1-database-id>"   # npx wrangler d1 create tonyshi-photos
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "tonyshi-photos"         # npx wrangler r2 bucket create tonyshi-photos
+
+[images]
+binding = "IMAGES"
+
+# Flickr sync heartbeat. Each tick does a bounded slice of work; the per-hour API budget
+# (default 3000 of Flickr's 3600/key) is enforced in D1, so ticks can't overrun the limit.
+[triggers]
+crons = ["* * * * *"]
+
+[observability]
+enabled = true
+
+[vars]
+SITE_NAME = "Tony Shi Photography"
+INQUIRY_TO = ""            # set in Admin → Settings → Inquiry form
+INQUIRY_FROM = "tonyshi.photos <no-reply@tonyshi.photos>"
+TURNSTILE_SITE_KEY = ""    # set in Admin → Settings → Inquiry form
+# Admin auth: if both are set, /admin and /api/admin require a valid Cloudflare Access JWT.
+# Otherwise they fall back to HTTP Basic auth with the ADMIN_PASSWORD secret (user "admin").
+ACCESS_TEAM_DOMAIN = ""   # e.g. "yourteam.cloudflareaccess.com"
+ACCESS_AUD = ""           # Access application audience tag
+
+# Secrets (npx wrangler secret put <NAME>):
+#   ENCRYPTION_KEY    random string; encrypts Flickr secrets/tokens at rest in D1
+#   ADMIN_PASSWORD    only needed if not using Cloudflare Access
+#   (Turnstile + Resend keys are entered in Admin → Settings → Inquiry form, stored encrypted in D1)

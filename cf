@@ -1,0 +1,17 @@
+#!/bin/zsh
+# Runs wrangler against the tonyshi.photos Cloudflare account only, using
+# credentials from ~/.zshrc. Nothing global is touched, so your other
+# Cloudflare accounts and their tokens stay as they are.
+#   ./cf deploy
+#   ./cf secret put ADMIN_PASSWORD
+#   ./cf d1 create friends-vpn-portal
+source ~/.zshrc 2>/dev/null
+
+if [[ -z "$CF_TONYSHIPHOTOS_API_TOKEN" || -z "$CF_TONYSHIPHOTOS_ACCOUNT_ID" ]]; then
+  echo "Set CF_TONYSHIPHOTOS_API_TOKEN and CF_TONYSHIPHOTOS_ACCOUNT_ID in ~/.zshrc first." >&2
+  exit 1
+fi
+
+CLOUDFLARE_API_TOKEN="$CF_TONYSHIPHOTOS_API_TOKEN" \
+CLOUDFLARE_ACCOUNT_ID="$CF_TONYSHIPHOTOS_ACCOUNT_ID" \
+  exec npx wrangler "$@"
