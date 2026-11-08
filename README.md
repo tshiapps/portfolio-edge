@@ -1,5 +1,7 @@
 # PortfolioEdge
 
+> **All rights reserved.** Published for viewing only — see [LICENSE](LICENSE). Not licensed for reuse.
+
 Serverless JavaScript photography portfolio and asset manager — Flickr, Instagram and Getty Images joined into one data set,
 served from Cloudflare's edge with no origin server. Live at [tonyshi.photos](https://tonyshi.photos).
 
